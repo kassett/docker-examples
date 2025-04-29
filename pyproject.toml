@@ -23,6 +23,9 @@ dependencies = [
     "pydantic-settings"
 ]
 
+[project.scripts]
+examples = "examples.cli:cli"
+
 [project.optional-dependencies]
 test = [
     "localstack-client>=2.5",
@@ -38,6 +41,9 @@ test = [
 dev-mode = true
 python = "3.12"
 features = ["test"]
+post-install-commands = [
+    "pip install -e .",
+]
 
 [tool.hatch.envs.default.env-vars]
 PYTHONPATH = "src"
