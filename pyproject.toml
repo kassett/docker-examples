@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch]
+root = "src"
+
+[tool.hatch.version]
+path = "src/examples/__init__.py"
+
+[project]
+name = "examples"
+description = "Examples"
+authors = [
+    {name = "Samuel Chai"}
+]
+requires-python = ">=3.12"
+dynamic = ["version"]
+
+dependencies = [
+    "click",
+    "pulsar-client",
+    "pydantic-settings"
+]
+
+[project.optional-dependencies]
+test = [
+    "localstack-client>=2.5",
+    "pytest>=8.2.2",
+    "pytest-env>=1.1.3",
+    "pytest-asyncio>=0.23.7",
+    "coverage",
+    "responses",
+    "faker",
+]
+
+[tool.hatch.envs.default]
+dev-mode = true
+python = "3.12"
+features = ["test"]
+
+[tool.hatch.envs.default.env-vars]
+PYTHONPATH = "src"
+
+[tool.hatch.envs.backend]
+dev-mode = false
+python = "3.12"
+features = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/examples"]
