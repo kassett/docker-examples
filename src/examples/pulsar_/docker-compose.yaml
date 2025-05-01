@@ -33,7 +33,6 @@ services:
     configs:
       - source: pulsar_init_script
         target: /etc/configs/init-script.sh
-        mode: 0555
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -91,6 +90,28 @@ services:
       - "8080:8080"
     command: bash -c "bin/apply-config-from-env.py conf/broker.conf && exec bin/pulsar broker"
 
+  clickhouse:
+    container_name: clickhouse
+    image: clickhouse/clickhouse-server:latest
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    healthcheck:
+      test: clickhouse client -u $${CLICKHOUSE_USER} --password $${CLICKHOUSE_PASSWORD} -q 'SELECT 1'
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    networks:
+      - pulsar
+    environment:
+      CLICKHOUSE_DB: examples
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_USER: examples
+      CLICKHOUSE_PASSWORD: examples
+    configs:
+      - source: clickhouse_init_sql
+        target: /docker-entrypoint-initdb.d/init.sql
+
 networks:
   pulsar:
     driver: bridge
@@ -106,3 +127,37 @@ configs:
         --configuration-store zookeeper:2181 \
         --web-service-url http://broker:8080 \
         --broker-service-url pulsar://broker:6650
+
+  clickhouse_init_sql:
+    name: clickhouse_init_sql
+    content: |
+      USE examples;
+      
+      CREATE TABLE IF NOT EXISTS sent_messages
+      (
+          topic_name String,
+          content String,
+          timestamp DateTime
+      )
+      ENGINE = MergeTree
+      ORDER BY (topic_name, timestamp);
+
+      CREATE TABLE IF NOT EXISTS campaign_details
+      (
+          topic_name String,
+          consumer_name String,
+          content String,
+          timestamp DateTime
+      )
+      ENGINE = MergeTree
+      ORDER BY (topic_name, consumer_name, timestamp);
+
+      CREATE TABLE IF NOT EXISTS transaction_details
+      (
+          topic_name String,
+          consumer_name String,
+          content String,
+          timestamp DateTime
+      )
+      ENGINE = MergeTree
+      ORDER BY (topic_name, consumer_name, timestamp);

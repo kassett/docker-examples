@@ -1,62 +1,60 @@
+import json
 import pulsar
+from pulsar import ConsumerType
+
+
+async def consume_messages(topic, subscription_name, consumer_type, label):
+    """
+    Generic Pulsar message consumer.
+    Logs and acknowledges messages from the specified topic.
+    """
+    from examples import get_settings, get_logger
+
+    s = get_settings()
+    log = get_logger(__name__)
+    client = pulsar.Client(s.pulsar_service_url)
+
+    consumer = client.subscribe(
+        topic=topic,
+        subscription_name=subscription_name,
+        consumer_type=consumer_type,
+        initial_position=pulsar.InitialPosition.Latest
+    )
+
+    while True:
+        try:
+            msg = consumer.receive(timeout_millis=5000)
+            data = json.loads(msg.data())
+            log.info(f"Processed {label}: {data}")
+            consumer.acknowledge(msg)
+        except pulsar.Timeout:
+            continue
+        except Exception as e:
+            log.error(f"{label} error: {e}")
+            consumer.negative_acknowledge(msg)
+
+    client.close()
 
 
 async def consume_transactions():
-    """
-    Consume transactions one at a time.
-    """
-    from examples import get_logger, get_settings
+    from examples import get_settings, get_logger
 
-    pulsar.SubscriptionNotFound
-    settings = get_settings()
-    logger = get_logger(__name__)
-
-    client = pulsar.Client(settings.pulsar_service_url)
-    consumer = client.subscribe(
-        settings.create_topic("sensor-events"),
-        subscription_name='exclusive-log-subscription',
-        subscription_type=pulsar.SubscriptionType.Exclusive
+    s = get_settings()
+    await consume_messages(
+        topic=s.pulsar_transaction_topic,
+        subscription_name="txn-exactly-once-subscription",
+        consumer_type=ConsumerType.Exclusive,
+        label="Transaction"
     )
 
-    try:
-        while True:
-            msg = consumer.receive()
-            try:
-                logger.info(f"Exclusive Consumer Received: {msg.data().decode('utf-8')}")
-                consumer.acknowledge(msg)
-            except Exception as e:
-                consumer.negative_acknowledge(msg)
-                logger.error(f"Failed to process message: {e}")
-    finally:
-        client.close()
 
+async def consume_campaign_details():
+    from examples import get_settings, get_logger
 
-
-async def consume_transaction_logs():
-    """
-    Consume logs for transactions one at a time.
-    """
-    from examples import get_logger, get_settings
-
-    pulsar.SubscriptionNotFound
-    settings = get_settings()
-    logger = get_logger(__name__)
-
-    client = pulsar.Client(settings.pulsar_service_url)
-    consumer = client.subscribe(
-        settings.create_topic("sensor-events"),
-        subscription_name='exclusive-log-subscription',
-        subscription_type=pulsar.SubscriptionType.Exclusive
+    s = get_settings()
+    await consume_messages(
+        topic=s.pulsar_campaign_details_topic,
+        subscription_name="campaign-metrics-shared-subscription",
+        consumer_type=ConsumerType.Shared,
+        label="Campaign"
     )
-
-    try:
-        while True:
-            msg = consumer.receive()
-            try:
-                logger.info(f"Exclusive Consumer Received: {msg.data().decode('utf-8')}")
-                consumer.acknowledge(msg)
-            except Exception as e:
-                consumer.negative_acknowledge(msg)
-                logger.error(f"Failed to process message: {e}")
-    finally:
-        client.close()

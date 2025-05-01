@@ -19,6 +19,7 @@ dynamic = ["version"]
 
 dependencies = [
     "click",
+    "clickhouse-connect",
     "pulsar-client",
     "pydantic-settings"
 ]
